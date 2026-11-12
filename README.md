@@ -326,7 +326,7 @@ console.log(config);
 Clone the repository and install dependencies:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aman-matoliya-dev/NetChaos.git
 cd netchaos
 npm install
 ```
