@@ -45,7 +45,12 @@ describe("offline profile", () => {
 
   it("ignores custom latency and failureRate overrides (stays absolute)", async () => {
     const fetchMock = createMockFetch();
-    const chaos = createNetChaos({ profile: "offline", latency: 5000, failureRate: 0, fetch: fetchMock });
+    const chaos = createNetChaos({
+      profile: "offline",
+      latency: 5000,
+      failureRate: 0,
+      fetch: fetchMock,
+    });
     const outcome = settle(chaos.fetch("/x"));
     expect(vi.getTimerCount()).toBe(0);
     expect((await outcome).status).toBe("rejected");
@@ -54,7 +59,12 @@ describe("offline profile", () => {
 
   it("overrides set earlier are ignored when switching to offline, and apply again afterwards", async () => {
     const fetchMock = createMockFetch();
-    const chaos = createNetChaos({ profile: "slow-3g", latency: 100, failureRate: 0, fetch: fetchMock });
+    const chaos = createNetChaos({
+      profile: "slow-3g",
+      latency: 100,
+      failureRate: 0,
+      fetch: fetchMock,
+    });
     chaos.setProfile("offline");
     expect((await settle(chaos.fetch("/offline"))).status).toBe("rejected");
     expect(fetchMock).not.toHaveBeenCalled();

@@ -54,8 +54,7 @@ describe("SimulatedNetworkError", () => {
   });
 
   it("can be handled by generic network-error code that checks instanceof TypeError", () => {
-    const classify = (error: unknown): string =>
-      error instanceof TypeError ? "network" : "other";
+    const classify = (error: unknown): string => (error instanceof TypeError ? "network" : "other");
     expect(classify(new SimulatedNetworkError("offline"))).toBe("network");
     expect(classify(new NetChaosConfigError("x"))).toBe("other");
   });

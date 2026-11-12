@@ -73,7 +73,11 @@ describe("real fetch through NetChaos", () => {
       const payload = JSON.stringify({ name: "widget", method });
       const response = await chaos.fetch(`${baseUrl}/items`, {
         method,
-        headers: { "content-type": "application/json", authorization: "Bearer abc", "x-trace": "t-1" },
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer abc",
+          "x-trace": "t-1",
+        },
         ...(method === "DELETE" ? {} : { body: payload }),
       });
       expect(response.status).toBe(200);
@@ -143,7 +147,8 @@ describe("real fetch through NetChaos", () => {
     const random = sequence([0.5, 0.1, 0.5, 0.9, 0.5, 0.2, 0.5, 0.8]);
     const chaos = createNetChaos({ profile: "unstable", latency: 10, random });
     const outcomes: string[] = [];
-    for (const path of ["/a", "/b", "/c", "/d"]) outcomes.push((await settle(chaos.fetch(`${baseUrl}${path}`))).status);
+    for (const path of ["/a", "/b", "/c", "/d"])
+      outcomes.push((await settle(chaos.fetch(`${baseUrl}${path}`))).status);
     expect(outcomes).toEqual(["rejected", "fulfilled", "rejected", "fulfilled"]);
     expect(seen.map((s) => s.path)).toEqual(["/b", "/d"]);
   });
@@ -151,7 +156,10 @@ describe("real fetch through NetChaos", () => {
   it("two instances with different profiles work concurrently against the same server", async () => {
     const online = createNetChaos({ profile: "slow-3g", latency: 20 });
     const offline = createNetChaos({ profile: "offline" });
-    const [good, bad] = await Promise.all([settle(online.fetch(`${baseUrl}/ok`)), settle(offline.fetch(`${baseUrl}/no`))]);
+    const [good, bad] = await Promise.all([
+      settle(online.fetch(`${baseUrl}/ok`)),
+      settle(offline.fetch(`${baseUrl}/no`)),
+    ]);
     expect(good.status).toBe("fulfilled");
     expect(bad.status).toBe("rejected");
     expect(seen.map((s) => s.path)).toEqual(["/ok"]);
@@ -199,7 +207,9 @@ describe("real fetch: errors and cancellation", () => {
   });
 
   it("an already-aborted request is not sent", async () => {
-    const result = await settle(createNetChaos().fetch(`${baseUrl}/never`, { signal: AbortSignal.abort() }));
+    const result = await settle(
+      createNetChaos().fetch(`${baseUrl}/never`, { signal: AbortSignal.abort() }),
+    );
     expect(result.status).toBe("rejected");
     expect(seen).toHaveLength(0);
   });

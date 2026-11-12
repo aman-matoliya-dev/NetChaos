@@ -25,7 +25,9 @@ function run(
     (() => {
       throw new Error("randomness must not be consumed");
     });
-  const outcome = settle(runSimulation({ config: simulation, signal: options.signal, random, forward }));
+  const outcome = settle(
+    runSimulation({ config: simulation, signal: options.signal, random, forward }),
+  );
   return { forward, outcome, response };
 }
 
@@ -100,7 +102,9 @@ describe("runSimulation (execution sequence)", () => {
 
 describe("runSimulation ordering", () => {
   it("applies latency first, then rolls for failure, then forwards", async () => {
-    const { forward, outcome } = run(config("slow-3g", { failureRate: 0.5 }), { random: sequence([0.9]) });
+    const { forward, outcome } = run(config("slow-3g", { failureRate: 0.5 }), {
+      random: sequence([0.9]),
+    });
     await vi.advanceTimersByTimeAsync(1999);
     expect(forward).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
@@ -125,7 +129,9 @@ describe("runSimulation ordering", () => {
     controller.abort();
     const { forward, outcome } = run(config("unstable"), { signal: controller.signal });
     const result = await outcome; // random would throw if consumed
-    expect((result.status === "rejected" ? result.reason : undefined) as Error).toMatchObject({ name: "AbortError" });
+    expect((result.status === "rejected" ? result.reason : undefined) as Error).toMatchObject({
+      name: "AbortError",
+    });
     expect(vi.getTimerCount()).toBe(0);
     expect(forward).not.toHaveBeenCalled();
   });
@@ -160,13 +166,17 @@ describe("runSimulation ordering", () => {
     const { forward, outcome } = run(config("fast", { latency: 100 }), { signal });
     await vi.advanceTimersByTimeAsync(100);
     const result = await outcome;
-    expect((result.status === "rejected" ? result.reason : undefined) as Error).toMatchObject({ name: "AbortError" });
+    expect((result.status === "rejected" ? result.reason : undefined) as Error).toMatchObject({
+      name: "AbortError",
+    });
     expect(forward).not.toHaveBeenCalled();
   });
 
   it("abort wins over a simulated failure that would have happened later", async () => {
     const controller = new AbortController();
-    const { outcome } = run(config("fast", { latency: 1000, failureRate: 1 }), { signal: controller.signal });
+    const { outcome } = run(config("fast", { latency: 1000, failureRate: 1 }), {
+      signal: controller.signal,
+    });
     await vi.advanceTimersByTimeAsync(500);
     controller.abort();
     const result = await outcome;
@@ -174,7 +184,10 @@ describe("runSimulation ordering", () => {
   });
 
   it("cleans up its abort listener whichever way the request ends", async () => {
-    for (const simulation of [config("fast", { latency: 10 }), config("fast", { latency: 10, failureRate: 1 })]) {
+    for (const simulation of [
+      config("fast", { latency: 10 }),
+      config("fast", { latency: 10, failureRate: 1 }),
+    ]) {
       const { signal, counts } = trackSignal();
       const { outcome } = run(simulation, { signal });
       await vi.advanceTimersByTimeAsync(10);
@@ -191,7 +204,8 @@ describe("runSimulation ordering", () => {
   });
 
   it("rejects with NetChaosConfigError if the random source returns garbage", async () => {
-    const result = await run(config("fast", { failureRate: 0.5 }), { random: () => Number.NaN }).outcome;
+    const result = await run(config("fast", { failureRate: 0.5 }), { random: () => Number.NaN })
+      .outcome;
     expect(result.status === "rejected" && result.reason).toBeInstanceOf(NetChaosConfigError);
   });
 });

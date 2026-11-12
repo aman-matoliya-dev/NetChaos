@@ -51,7 +51,9 @@ describe("runtime-neutral core (static checks over src/)", () => {
   for (const identifier of forbiddenIdentifiers) {
     it(`never references \`${identifier}\``, () => {
       const offenders = files.filter((file) =>
-        new RegExp(`(?<![.\\w$])${identifier}(?![\\w$])`).test(codeOnly(readFileSync(file, "utf8"))),
+        new RegExp(`(?<![.\\w$])${identifier}(?![\\w$])`).test(
+          codeOnly(readFileSync(file, "utf8")),
+        ),
       );
       expect(offenders).toEqual([]);
     });
@@ -59,7 +61,9 @@ describe("runtime-neutral core (static checks over src/)", () => {
 
   it("imports no Node.js built-ins and no third-party packages (zero runtime dependencies)", () => {
     for (const file of files) {
-      const imports = [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1] ?? "");
+      const imports = [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map(
+        (m) => m[1] ?? "",
+      );
       for (const specifier of imports) expect(specifier.startsWith(".")).toBe(true);
     }
   });
@@ -71,7 +75,9 @@ describe("runtime-neutral core (static checks over src/)", () => {
     expect(uses).toHaveLength(1);
     expect(uses[0]).toContain(".fetch");
     for (const file of files) {
-      expect(codeOnly(readFileSync(file, "utf8"))).not.toMatch(/globalThis\s*(\.\w+|\[[^\]]+\])\s*=[^=]/);
+      expect(codeOnly(readFileSync(file, "utf8"))).not.toMatch(
+        /globalThis\s*(\.\w+|\[[^\]]+\])\s*=[^=]/,
+      );
     }
   });
 

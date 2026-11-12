@@ -58,14 +58,18 @@ describe("inputs: string, URL, Request, RequestInit", () => {
       const init: RequestInit = Object.freeze({
         method,
         headers,
-        ...(method === "GET" || method === "DELETE" ? {} : { body: JSON.stringify({ id: 1, ok: true }) }),
+        ...(method === "GET" || method === "DELETE"
+          ? {}
+          : { body: JSON.stringify({ id: 1, ok: true }) }),
       });
       await createNetChaos({ fetch: fetchMock }).fetch("/api/resource", init);
       const forwarded = callArgs(fetchMock)[1];
       expect(forwarded).toBe(init);
       expect(forwarded?.method).toBe(method);
       expect(forwarded?.headers).toBe(headers);
-      expect(forwarded?.body).toBe(method === "GET" || method === "DELETE" ? undefined : '{"id":1,"ok":true}');
+      expect(forwarded?.body).toBe(
+        method === "GET" || method === "DELETE" ? undefined : '{"id":1,"ok":true}',
+      );
     });
   }
 
@@ -272,6 +276,8 @@ describe("global fetch is never modified", () => {
     const chaos = createNetChaos();
     const result = await settle(chaos.fetch("/x"));
     expect(result.status === "rejected" && result.reason).toBeInstanceOf(NetChaosConfigError);
-    expect(result.status === "rejected" && (result.reason as Error).message).toContain("No Fetch implementation");
+    expect(result.status === "rejected" && (result.reason as Error).message).toContain(
+      "No Fetch implementation",
+    );
   });
 });

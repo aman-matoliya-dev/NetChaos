@@ -147,21 +147,27 @@ describe("already-aborted requests", () => {
     const fetchMock = createMockFetch();
     const controller = new AbortController();
     controller.abort();
-    const result = await settle(createNetChaos({ fetch: fetchMock }).fetch(request(controller.signal)));
+    const result = await settle(
+      createNetChaos({ fetch: fetchMock }).fetch(request(controller.signal)),
+    );
     expect(reasonOf(result)).toMatchObject({ name: "AbortError" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("even the fast profile (no latency) refuses to forward an aborted request", async () => {
     const fetchMock = createMockFetch();
-    const result = await settle(createNetChaos({ fetch: fetchMock }).fetch("/x", { signal: AbortSignal.abort() }));
+    const result = await settle(
+      createNetChaos({ fetch: fetchMock }).fetch("/x", { signal: AbortSignal.abort() }),
+    );
     expect(result.status).toBe("rejected");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("an aborted request on the offline profile reports AbortError, not a simulated failure", async () => {
     const result = await settle(
-      createNetChaos({ profile: "offline", fetch: createMockFetch() }).fetch("/x", { signal: AbortSignal.abort() }),
+      createNetChaos({ profile: "offline", fetch: createMockFetch() }).fetch("/x", {
+        signal: AbortSignal.abort(),
+      }),
     );
     expect(reasonOf(result)).toMatchObject({ name: "AbortError" });
   });
@@ -170,7 +176,9 @@ describe("already-aborted requests", () => {
     for (const reason of [new Error("custom"), "a string reason", 7]) {
       const controller = new AbortController();
       controller.abort(reason);
-      const result = await settle(createNetChaos({ fetch: createMockFetch() }).fetch("/x", { signal: controller.signal }));
+      const result = await settle(
+        createNetChaos({ fetch: createMockFetch() }).fetch("/x", { signal: controller.signal }),
+      );
       expect(reasonOf(result)).toBe(reason);
     }
   });
@@ -218,7 +226,9 @@ describe("native signal semantics (Request vs init.signal are NOT merged)", () =
     const requestController = new AbortController();
     const initController = new AbortController();
     const chaos = createNetChaos({ latency: 100, fetch: fetchMock });
-    const outcome = settle(chaos.fetch(request(requestController.signal), { signal: initController.signal }));
+    const outcome = settle(
+      chaos.fetch(request(requestController.signal), { signal: initController.signal }),
+    );
     await vi.advanceTimersByTimeAsync(50);
     requestController.abort();
     await vi.advanceTimersByTimeAsync(50);
@@ -230,7 +240,9 @@ describe("native signal semantics (Request vs init.signal are NOT merged)", () =
     const fetchMock = createMockFetch();
     const dead = new AbortController();
     dead.abort();
-    const result = await settle(createNetChaos({ fetch: fetchMock }).fetch(request(dead.signal), { signal: null }));
+    const result = await settle(
+      createNetChaos({ fetch: fetchMock }).fetch(request(dead.signal), { signal: null }),
+    );
     expect(result.status).toBe("fulfilled");
   });
 
@@ -257,7 +269,9 @@ describe("native signal semantics (Request vs init.signal are NOT merged)", () =
     });
 
     it("prefers init.signal, including null, over the Request signal", () => {
-      expect(resolveSignal(request(controller.signal), { signal: other.signal })).toBe(other.signal);
+      expect(resolveSignal(request(controller.signal), { signal: other.signal })).toBe(
+        other.signal,
+      );
       expect(resolveSignal(request(controller.signal), { signal: null })).toBeNull();
     });
 
@@ -268,7 +282,14 @@ describe("native signal semantics (Request vs init.signal are NOT merged)", () =
     });
 
     it("rejects values that are not AbortSignal-like with a TypeError", () => {
-      for (const bad of [{}, "signal", 5, true, { aborted: false }, { aborted: true, addEventListener: 1 }]) {
+      for (const bad of [
+        {},
+        "signal",
+        5,
+        true,
+        { aborted: false },
+        { aborted: true, addEventListener: 1 },
+      ]) {
         const error = thrown(() => resolveSignal("/x", { signal: bad as unknown as AbortSignal }));
         expect(error).toBeInstanceOf(TypeError);
       }

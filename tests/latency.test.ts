@@ -165,7 +165,11 @@ describe("waitFor (abortable delay)", () => {
 });
 
 describe("latency applied per profile (through chaos.fetch)", () => {
-  async function timeUntilForwarded(chaos: ReturnType<typeof createNetChaos>, fetchMock: ReturnType<typeof createMockFetch>, limit: number): Promise<number> {
+  async function timeUntilForwarded(
+    chaos: ReturnType<typeof createNetChaos>,
+    fetchMock: ReturnType<typeof createMockFetch>,
+    limit: number,
+  ): Promise<number> {
     const outcome = settle(chaos.fetch("/x"));
     for (let elapsed = 0; elapsed <= limit; elapsed++) {
       if (fetchMock.mock.calls.length > 0) {
@@ -210,8 +214,16 @@ describe("latency applied per profile (through chaos.fetch)", () => {
   it("high-latency is slower than slow-3g", async () => {
     const slowMock = createMockFetch();
     const highMock = createMockFetch();
-    const slow = await timeUntilForwarded(createNetChaos({ profile: "slow-3g", fetch: slowMock }), slowMock, 5000);
-    const high = await timeUntilForwarded(createNetChaos({ profile: "high-latency", fetch: highMock }), highMock, 5000);
+    const slow = await timeUntilForwarded(
+      createNetChaos({ profile: "slow-3g", fetch: slowMock }),
+      slowMock,
+      5000,
+    );
+    const high = await timeUntilForwarded(
+      createNetChaos({ profile: "high-latency", fetch: highMock }),
+      highMock,
+      5000,
+    );
     expect(slow).toBe(2000);
     expect(high).toBe(3000);
   });
@@ -224,7 +236,12 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     it(`unstable: a random draw of ${String(draw)} gives a ${String(expected)}ms delay`, async () => {
       const fetchMock = createMockFetch();
       const random = sequence([draw]);
-      const chaos = createNetChaos({ profile: "unstable", failureRate: 0, fetch: fetchMock, random });
+      const chaos = createNetChaos({
+        profile: "unstable",
+        failureRate: 0,
+        fetch: fetchMock,
+        random,
+      });
       const outcome = settle(chaos.fetch("/x"));
       await vi.advanceTimersByTimeAsync(expected - 1);
       expect(fetchMock).not.toHaveBeenCalled();
@@ -254,7 +271,9 @@ describe("latency applied per profile (through chaos.fetch)", () => {
 
   it("a custom latency replaces the profile's latency", async () => {
     const fetchMock = createMockFetch();
-    const outcome = settle(createNetChaos({ profile: "slow-3g", latency: 500, fetch: fetchMock }).fetch("/x"));
+    const outcome = settle(
+      createNetChaos({ profile: "slow-3g", latency: 500, fetch: fetchMock }).fetch("/x"),
+    );
     await vi.advanceTimersByTimeAsync(499);
     expect(fetchMock).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
@@ -272,7 +291,11 @@ describe("latency applied per profile (through chaos.fetch)", () => {
   });
 
   it("a custom latency on unstable becomes the new base and keeps the internal jitter", async () => {
-    for (const [draw, expected] of [[0, 0], [0.5, 100], [1, 200]] as const) {
+    for (const [draw, expected] of [
+      [0, 0],
+      [0.5, 100],
+      [1, 200],
+    ] as const) {
       const fetchMock = createMockFetch();
       const chaos = createNetChaos({
         profile: "unstable",

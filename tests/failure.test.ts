@@ -73,7 +73,8 @@ describe("failures through chaos.fetch", () => {
   it("failureRate 0 never intentionally fails", async () => {
     const fetchMock = createMockFetch();
     const chaos = createNetChaos({ failureRate: 0, fetch: fetchMock });
-    for (let i = 0; i < 500; i++) expect((await settle(chaos.fetch("/x"))).status).toBe("fulfilled");
+    for (let i = 0; i < 500; i++)
+      expect((await settle(chaos.fetch("/x"))).status).toBe("fulfilled");
     expect(fetchMock).toHaveBeenCalledTimes(500);
   });
 
@@ -92,7 +93,8 @@ describe("failures through chaos.fetch", () => {
     const random = sequence([0.1, 0.5, 0.2, 0.3, 0.29]);
     const chaos = createNetChaos({ failureRate: 0.3, fetch: fetchMock, random });
     const statuses: string[] = [];
-    for (const path of ["/1", "/2", "/3", "/4", "/5"]) statuses.push((await settle(chaos.fetch(path))).status);
+    for (const path of ["/1", "/2", "/3", "/4", "/5"])
+      statuses.push((await settle(chaos.fetch(path))).status);
     expect(statuses).toEqual(["rejected", "fulfilled", "rejected", "fulfilled", "rejected"]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(random.drawn()).toBe(5);
@@ -100,16 +102,27 @@ describe("failures through chaos.fetch", () => {
 
   it("concurrent requests are decided independently, in call order", async () => {
     const fetchMock = createMockFetch();
-    const chaos = createNetChaos({ failureRate: 0.5, fetch: fetchMock, random: sequence([0.9, 0.1, 0.9, 0.1]) });
+    const chaos = createNetChaos({
+      failureRate: 0.5,
+      fetch: fetchMock,
+      random: sequence([0.9, 0.1, 0.9, 0.1]),
+    });
     const results = await Promise.all(["/a", "/b", "/c", "/d"].map((p) => settle(chaos.fetch(p))));
-    expect(results.map((r) => r.status)).toEqual(["fulfilled", "rejected", "fulfilled", "rejected"]);
+    expect(results.map((r) => r.status)).toEqual([
+      "fulfilled",
+      "rejected",
+      "fulfilled",
+      "rejected",
+    ]);
   });
 
   it("an intermediate rate is probabilistic (seeded 20,000-request run lands within 5 sigma)", async () => {
     const fetchMock = createMockFetch();
     const chaos = createNetChaos({ failureRate: 0.3, fetch: fetchMock, random: mulberry32(2024) });
     const total = 20_000;
-    const results = await Promise.all(Array.from({ length: total }, () => settle(chaos.fetch("/x"))));
+    const results = await Promise.all(
+      Array.from({ length: total }, () => settle(chaos.fetch("/x"))),
+    );
     const failures = results.filter((r) => r.status === "rejected").length;
     const sigma = Math.sqrt((0.3 * 0.7) / total);
     expect(Math.abs(failures / total - 0.3)).toBeLessThan(5 * sigma);

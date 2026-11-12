@@ -53,7 +53,12 @@ describe("per-request configuration snapshots", () => {
   });
 
   it("an in-flight request that will fail still fails after switching to fast", async () => {
-    const chaos = createNetChaos({ profile: "slow-3g", latency: 500, failureRate: 1, fetch: createMockFetch() });
+    const chaos = createNetChaos({
+      profile: "slow-3g",
+      latency: 500,
+      failureRate: 1,
+      fetch: createMockFetch(),
+    });
     const inFlight = settle(chaos.fetch("/x"));
     chaos.setProfile("fast");
     chaos.clearOverrides();

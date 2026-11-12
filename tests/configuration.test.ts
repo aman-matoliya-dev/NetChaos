@@ -251,7 +251,10 @@ describe("configuration validation", () => {
   });
 
   it("reports the FIRST invalid value, never silently accepting any", () => {
-    expectConfigError(() => createNetChaos({ profile: "fast", latency: 5, failureRate: 5 }), /failureRate/);
+    expectConfigError(
+      () => createNetChaos({ profile: "fast", latency: 5, failureRate: 5 }),
+      /failureRate/,
+    );
   });
 
   it("truncates very long received values in error messages", () => {
@@ -345,6 +348,10 @@ describe("multiple instances stay independent", () => {
     instances[0]?.setProfile("offline");
     instances[1]?.clearOverrides();
     expect(instances[2]?.getConfig()).toEqual({ profile: "slow-3g", latency: 10, failureRate: 0 });
-    expect(instances[1]?.getConfig()).toEqual({ profile: "slow-3g", latency: 2000, failureRate: 0 });
+    expect(instances[1]?.getConfig()).toEqual({
+      profile: "slow-3g",
+      latency: 2000,
+      failureRate: 0,
+    });
   });
 });
