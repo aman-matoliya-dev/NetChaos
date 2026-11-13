@@ -3,48 +3,41 @@ import { NetChaosConfigError, createNetChaos } from "../src";
 import { MAX_LATENCY_MS } from "../src/core/config";
 import { computeDelay, waitFor } from "../src/simulation/latency";
 import { createMockFetch, sequence, settle, trackSignal } from "./helpers";
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
 afterEach(() => {
   vi.useRealTimers();
 });
-
 const neverDraw = () => {
   throw new Error("randomness must not be consumed here");
 };
-
 describe("computeDelay (jitter math)", () => {
   it("is 0 for zero, negative or NaN latency, whatever the jitter, without drawing", () => {
     expect(computeDelay(0, 600, neverDraw)).toBe(0);
     expect(computeDelay(-5, 600, neverDraw)).toBe(0);
     expect(computeDelay(Number.NaN, 600, neverDraw)).toBe(0);
   });
-
   it("is exactly the latency when there is no jitter, without drawing", () => {
     expect(computeDelay(2000, 0, neverDraw)).toBe(2000);
     expect(computeDelay(3000, 0, neverDraw)).toBe(3000);
   });
-
   it("uses latency +/- jitter at the extremes of the random range (deterministic draws)", () => {
     expect(computeDelay(800, 600, () => 0)).toBe(200);
     expect(computeDelay(800, 600, () => 0.5)).toBe(800);
-    expect(computeDelay(800, 600, () => 1)).toBe(1400);
+    expect(computeDelay(800, 600, () => 1 - 1e-12)).toBeCloseTo(1400, 6);
     expect(computeDelay(800, 600, () => 0.25)).toBe(500);
     expect(computeDelay(800, 600, () => 0.75)).toBe(1100);
   });
-
   it("limits the spread to the latency so the delay is never negative", () => {
     expect(computeDelay(100, 600, () => 0)).toBe(0);
     expect(computeDelay(100, 600, () => 0.5)).toBe(100);
-    expect(computeDelay(100, 600, () => 1)).toBe(200);
+    expect(computeDelay(100, 600, () => 1 - 1e-12)).toBeCloseTo(200, 6);
   });
-
   it("never returns a negative delay for any latency/jitter/draw combination", () => {
     for (const latency of [0.5, 1, 10, 100, 800, 5000]) {
       for (const jitter of [0, 1, 100, 600, 10000]) {
-        for (let i = 0; i <= 100; i++) {
+        for (let i = 0; i < 100; i++) {
           const delay = computeDelay(latency, jitter, () => i / 100);
           expect(delay).toBeGreaterThanOrEqual(0);
           expect(delay).toBeLessThanOrEqual(latency + Math.min(jitter, latency));
@@ -52,32 +45,29 @@ describe("computeDelay (jitter math)", () => {
       }
     }
   });
-
   it("keeps the configured latency as the mean of a uniform spread of draws", () => {
-    const draws = 1001;
+    const draws = 1000;
     let sum = 0;
-    for (let i = 0; i < draws; i++) sum += computeDelay(800, 600, () => i / (draws - 1));
+    for (let i = 0; i < draws; i++) {
+      sum += computeDelay(800, 600, () => (i + 0.5) / draws);
+    }
     expect(sum / draws).toBeCloseTo(800, 6);
   });
-
   it("consumes exactly one draw per delay when jitter applies", () => {
     const random = sequence([0.5]);
     computeDelay(800, 600, random);
     expect(random.drawn()).toBe(1);
   });
-
   it("caps the delay at the maximum timer value", () => {
-    expect(computeDelay(MAX_LATENCY_MS, 600, () => 1)).toBe(MAX_LATENCY_MS);
+    expect(computeDelay(MAX_LATENCY_MS, 600, () => 1 - 1e-12)).toBe(MAX_LATENCY_MS);
     expect(computeDelay(MAX_LATENCY_MS, 0, neverDraw)).toBe(MAX_LATENCY_MS);
   });
-
   it("rejects an invalid random source value", () => {
-    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -0.1, 1.1]) {
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -0.1, 1, 1.1]) {
       expect(() => computeDelay(800, 600, () => bad)).toThrow(NetChaosConfigError);
     }
   });
 });
-
 describe("waitFor (abortable delay)", () => {
   it("resolves exactly when the delay elapses, and leaves no timer behind", async () => {
     const done = vi.fn();
@@ -90,14 +80,12 @@ describe("waitFor (abortable delay)", () => {
     await promise;
     expect(vi.getTimerCount()).toBe(0);
   });
-
   it("resolves immediately, without a timer, for 0, negative and NaN delays", async () => {
     for (const ms of [0, -1, Number.NaN]) {
       await waitFor(ms);
       expect(vi.getTimerCount()).toBe(0);
     }
   });
-
   it("stops waiting as soon as the signal aborts, rejecting with an AbortError", async () => {
     const controller = new AbortController();
     const outcome = settle(waitFor(5000, controller.signal));
@@ -109,7 +97,6 @@ describe("waitFor (abortable delay)", () => {
     expect(result.status === "rejected" && (result.reason as Error).name).toBe("AbortError");
     expect(vi.getTimerCount()).toBe(0);
   });
-
   it("removes its abort listener when aborted", async () => {
     const { controller, signal, counts } = trackSignal();
     const outcome = settle(waitFor(5000, signal));
@@ -117,7 +104,6 @@ describe("waitFor (abortable delay)", () => {
     await outcome;
     expect(counts).toEqual({ added: 1, removed: 1 });
   });
-
   it("removes its abort listener when the delay completes normally", async () => {
     const { signal, counts } = trackSignal();
     const outcome = settle(waitFor(50, signal));
@@ -126,7 +112,6 @@ describe("waitFor (abortable delay)", () => {
     expect(counts).toEqual({ added: 1, removed: 1 });
     expect(vi.getTimerCount()).toBe(0);
   });
-
   it("does nothing if the signal aborts after the delay finished", async () => {
     const controller = new AbortController();
     const outcome = settle(waitFor(10, controller.signal));
@@ -134,7 +119,6 @@ describe("waitFor (abortable delay)", () => {
     controller.abort();
     expect((await outcome).status).toBe("fulfilled");
   });
-
   it("rejects immediately for an already-aborted signal without starting a timer or listener", async () => {
     const controller = new AbortController();
     controller.abort();
@@ -144,7 +128,6 @@ describe("waitFor (abortable delay)", () => {
     expect(vi.getTimerCount()).toBe(0);
     expect(counts.added).toBe(0);
   });
-
   it("rejects with the exact custom abort reason", async () => {
     for (const reason of [new Error("stop"), "because", 42]) {
       const controller = new AbortController();
@@ -154,7 +137,6 @@ describe("waitFor (abortable delay)", () => {
       expect(result.status === "rejected" && result.reason).toBe(reason);
     }
   });
-
   it("works without any signal (null and undefined)", async () => {
     for (const signal of [undefined, null]) {
       const outcome = settle(waitFor(10, signal));
@@ -163,7 +145,6 @@ describe("waitFor (abortable delay)", () => {
     }
   });
 });
-
 describe("latency applied per profile (through chaos.fetch)", () => {
   async function timeUntilForwarded(
     chaos: ReturnType<typeof createNetChaos>,
@@ -180,14 +161,12 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     }
     throw new Error(`request was not forwarded within ${String(limit)}ms`);
   }
-
   it("fast: forwards immediately and creates no timers", () => {
     const fetchMock = createMockFetch();
     void settle(createNetChaos({ profile: "fast", fetch: fetchMock }).fetch("/x"));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(vi.getTimerCount()).toBe(0);
   });
-
   it("slow-3g: holds the request for the full 2000ms before it reaches fetch", async () => {
     const fetchMock = createMockFetch();
     const outcome = settle(createNetChaos({ profile: "slow-3g", fetch: fetchMock }).fetch("/x"));
@@ -197,7 +176,6 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((await outcome).status).toBe("fulfilled");
   });
-
   it("high-latency: every request is delayed by exactly the same 3000ms", async () => {
     const fetchMock = createMockFetch();
     const chaos = createNetChaos({ profile: "high-latency", fetch: fetchMock });
@@ -210,7 +188,6 @@ describe("latency applied per profile (through chaos.fetch)", () => {
       await outcome;
     }
   });
-
   it("high-latency is slower than slow-3g", async () => {
     const slowMock = createMockFetch();
     const highMock = createMockFetch();
@@ -227,11 +204,10 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect(slow).toBe(2000);
     expect(high).toBe(3000);
   });
-
   for (const [draw, expected] of [
     [0, 200],
     [0.5, 800],
-    [1, 1400],
+    [0.995, 1394],
   ] as const) {
     it(`unstable: a random draw of ${String(draw)} gives a ${String(expected)}ms delay`, async () => {
       const fetchMock = createMockFetch();
@@ -251,14 +227,13 @@ describe("latency applied per profile (through chaos.fetch)", () => {
       expect(random.drawn()).toBe(1);
     });
   }
-
   it("unstable: concurrent requests draw their own, different delays", async () => {
     const fetchMock = createMockFetch();
     const chaos = createNetChaos({
       profile: "unstable",
       failureRate: 0,
       fetch: fetchMock,
-      random: sequence([0, 1]),
+      random: sequence([0, 0.995]),
     });
     const first = settle(chaos.fetch("/first"));
     const second = settle(chaos.fetch("/second"));
@@ -268,7 +243,6 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     await Promise.all([first, second]);
   });
-
   it("a custom latency replaces the profile's latency", async () => {
     const fetchMock = createMockFetch();
     const outcome = settle(
@@ -280,7 +254,6 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await outcome;
   });
-
   it("a custom latency also applies on the fast profile", async () => {
     const fetchMock = createMockFetch();
     const outcome = settle(createNetChaos({ latency: 250, fetch: fetchMock }).fetch("/x"));
@@ -289,12 +262,11 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await outcome;
   });
-
   it("a custom latency on unstable becomes the new base and keeps the internal jitter", async () => {
     for (const [draw, expected] of [
       [0, 0],
       [0.5, 100],
-      [1, 200],
+      [0.995, 199],
     ] as const) {
       const fetchMock = createMockFetch();
       const chaos = createNetChaos({
@@ -314,13 +286,11 @@ describe("latency applied per profile (through chaos.fetch)", () => {
       await outcome;
     }
   });
-
   it("latency 0 override on slow-3g forwards immediately", () => {
     const fetchMock = createMockFetch();
     void settle(createNetChaos({ profile: "slow-3g", latency: 0, fetch: fetchMock }).fetch("/x"));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
-
   it("applies the latency BEFORE a simulated failure (failure arrives after the delay)", async () => {
     const fetchMock = createMockFetch();
     const chaos = createNetChaos({ latency: 1000, failureRate: 1, fetch: fetchMock });
@@ -335,7 +305,6 @@ describe("latency applied per profile (through chaos.fetch)", () => {
     expect((await outcome).status).toBe("rejected");
     expect(fetchMock).not.toHaveBeenCalled();
   });
-
   it("leaves no timers behind after completed and failed requests", async () => {
     const chaos = createNetChaos({ latency: 100, fetch: createMockFetch() });
     const failing = createNetChaos({ latency: 100, failureRate: 1, fetch: createMockFetch() });

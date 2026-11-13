@@ -113,13 +113,18 @@ describe("runSimulation ordering", () => {
   });
 
   it("draws the jitter value first and the failure value second", async () => {
-    // jitter draw 1 => 1400ms; failure draw 0.2 < 0.3 => fail.
-    // (If the draws were swapped: jitter 0.2 => 440ms and failure draw 1 => survive.)
-    const { forward, outcome } = run(config("unstable"), { random: sequence([1, 0.2]) });
-    await vi.advanceTimersByTimeAsync(1399);
+    // jitter draw 0.995 => 1394ms; failure draw 0.2 < 0.3 => fail.
+    // (If the draws were swapped: jitter 0.2 => 440ms and failure draw 0.995 => survive.)
+    const { forward, outcome } = run(config("unstable"), {
+      random: sequence([0.995, 0.2]),
+    });
+
+    await vi.advanceTimersByTimeAsync(1393);
     expect(vi.getTimerCount()).toBe(1);
+
     await vi.advanceTimersByTimeAsync(1);
     const result = await outcome;
+
     expect(result.status).toBe("rejected");
     expect(forward).not.toHaveBeenCalled();
   });
